@@ -24,7 +24,11 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
-	if req.K == 0 {
+	if len(req.Vector) != Dimensions {
+		http.Error(w, "vector must have 14 dimensions", http.StatusBadRequest)
+		return
+	}
+	if req.K < 1 {
 		req.K = 5
 	}
 

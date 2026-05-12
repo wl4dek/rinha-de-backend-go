@@ -1,14 +1,19 @@
 package ann
 
 import (
-	"container/heap"
 	"encoding/binary"
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/coder/hnsw"
 )
+
+type candidate struct {
+	pos   int
+	score float32
+}
 
 type IVFIndex struct {
 	centroids *hnsw.Graph[int]
@@ -32,19 +37,29 @@ func (idx *IVFIndex) labelFor(pos int) string {
 }
 
 func (idx *IVFIndex) Search(query []float32, k int) ([]SearchResult, error) {
-	if idx.nClusters == 0 {
+	if idx.nClusters == 0 || k <= 0 {
 		return nil, nil
 	}
 
-	normalize(query)
+	if len(query) != Dimensions {
+		return nil, fmt.Errorf(
+			"query must have %d dimensions, got %d",
+			Dimensions,
+			len(query),
+		)
+	}
 
-	nearest := idx.centroids.Search(query, 3)
+	q := make([]float32, Dimensions)
+	copy(q, query)
+	normalize(q)
+
+	nearest := idx.centroids.Search(q, 3)
 
 	if len(nearest) == 0 {
 		return nil, nil
 	}
 
-	h := make(maxHeap, 0, k)
+	best := make([]candidate, 0, k)
 
 	for _, cluster := range nearest {
 		cid := cluster.Key
@@ -53,25 +68,35 @@ func (idx *IVFIndex) Search(query []float32, k int) ([]SearchResult, error) {
 		end := int(idx.bounds[cid+1])
 
 		for pos := start; pos < end; pos++ {
-			score := dotProduct(idx.vectorAt(pos), query)
+			score := dotProduct(idx.vectorAt(pos), q)
 
-			if len(h) < k {
-				heap.Push(&h, candidate{pos: pos, score: score})
-				continue
-			}
+			if len(best) < k {
+				i := len(best)
+				best = best[:len(best)+1]
 
-			if score > h[0].score {
-				h[0] = candidate{pos: pos, score: score}
-				heap.Fix(&h, 0)
+				for i > 0 && score > best[i-1].score {
+					best[i] = best[i-1]
+					i--
+				}
+
+				best[i] = candidate{pos: pos, score: score}
+
+			} else if score > best[k-1].score {
+				i := k - 1
+
+				for i > 0 && score > best[i-1].score {
+					best[i] = best[i-1]
+					i--
+				}
+
+				best[i] = candidate{pos: pos, score: score}
 			}
 		}
 	}
 
-	results := make([]SearchResult, len(h))
+	results := make([]SearchResult, len(best))
 
-	for i := len(h) - 1; i >= 0; i-- {
-		c := heap.Pop(&h).(candidate)
-
+	for i, c := range best {
 		results[i] = SearchResult{
 			Label: idx.labelFor(c.pos),
 			Dist:  1 - c.score,
