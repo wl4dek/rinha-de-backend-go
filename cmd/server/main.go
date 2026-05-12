@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"net/http"
+	_ "net/http/pprof"
 	"os"
 	"strconv"
 
@@ -42,6 +43,7 @@ func setupRoutes() *http.ServeMux {
 
 	mux.HandleFunc("/ready", ready.HandleReady)
 	mux.HandleFunc("/fraud-score", fraudscore.HandleFraudScore)
+	mux.Handle("/debug/pprof/", http.DefaultServeMux)
 
 	return mux
 }
@@ -55,8 +57,17 @@ func main() {
 
 	log.Printf("Starting server on port %s", config.Port)
 
-	err := http.ListenAndServe(":"+config.Port, mux)
-	if err != nil {
-		log.Fatalf("Erro ao iniciar servidor: %v", err)
-	}
+	go func() {
+		err := http.ListenAndServe(":"+config.Port, mux)
+		if err != nil {
+			log.Fatalf("Erro ao iniciar servidor: %v", err)
+		}
+	}()
+
+	go func() {
+		log.Println("pprof on :6060")
+		log.Fatal(http.ListenAndServe("0.0.0.0:6060", nil))
+	}()
+
+	select {}
 }

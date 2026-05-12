@@ -2,10 +2,11 @@ package fraudscore
 
 import (
 	"bytes"
-	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	"github.com/bytedance/sonic"
 )
 
 func TestHandleFraudScore(t *testing.T) {
@@ -33,7 +34,7 @@ func TestHandleFraudScore(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			var reqBody *bytes.Buffer
 			if tt.body != nil {
-				bodyBytes, _ := json.Marshal(tt.body)
+				bodyBytes, _ := sonic.ConfigDefault.Marshal(tt.body)
 				reqBody = bytes.NewBuffer(bodyBytes)
 			} else {
 				reqBody = &bytes.Buffer{}

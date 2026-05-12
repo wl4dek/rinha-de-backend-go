@@ -14,22 +14,18 @@ func main() {
 		port = "8090"
 	}
 
-	refPath := os.Getenv("REFERENCES_PATH")
-	if refPath == "" {
-		refPath = "./references.json.gz"
+	ivfPath := os.Getenv("IVF_DATA_PATH")
+	if ivfPath == "" {
+		ivfPath = "./ivf_data"
 	}
 
-	indexBinPath := os.Getenv("INDEX_BIN_PATH")
-	if indexBinPath == "" {
-		indexBinPath = "./index.bin"
-	}
-
-	g, refs, err := ann.LoadOrBuild(refPath, indexBinPath)
+	log.Printf("Loading IVF index from %s", ivfPath)
+	idx, err := ann.LoadIVF(ivfPath)
 	if err != nil {
-		log.Fatalf("Failed to load/build HNSW: %v", err)
+		log.Fatalf("Failed to load IVF index: %v", err)
 	}
 
-	ann.SetGraph(g, refs)
+	ann.SetGraph(idx)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/search", ann.HandleSearch)

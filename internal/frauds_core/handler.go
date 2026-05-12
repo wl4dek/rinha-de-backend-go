@@ -1,8 +1,9 @@
 package fraudscore
 
 import (
-	"encoding/json"
 	"net/http"
+
+	"github.com/bytedance/sonic"
 )
 
 func HandleFraudScore(w http.ResponseWriter, r *http.Request) {
@@ -15,7 +16,7 @@ func HandleFraudScore(w http.ResponseWriter, r *http.Request) {
 
 	var req FraudScoreRequest
 
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if err := sonic.ConfigDefault.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "JSON inválido", http.StatusBadRequest)
 		return
 	}
@@ -23,5 +24,5 @@ func HandleFraudScore(w http.ResponseWriter, r *http.Request) {
 	resp := CalculateFraudScore(req, DefaultRules)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(resp)
+	sonic.ConfigDefault.NewEncoder(w).Encode(resp)
 }

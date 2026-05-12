@@ -2,11 +2,12 @@ package fraudscore
 
 import (
 	"bytes"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/bytedance/sonic"
 )
 
 func limitar(value, max float32) float32 {
@@ -55,13 +56,14 @@ func CalculateFraudScore(req FraudScoreRequest, rules Rules) FraudScoreResponse 
 		vector[10] = 0
 	}
 
-	known := make(map[string]struct{})
-
+	known := false
 	for _, m := range req.Customer.KnownMerchants {
-		known[m] = struct{}{}
+		if m == req.Merchant.ID {
+			known = true
+			break
+		}
 	}
-
-	if _, ok := known[req.Merchant.ID]; ok {
+	if known {
 		vector[11] = 1
 	} else {
 		vector[11] = 0
@@ -86,21 +88,27 @@ func CalculateFraudScore(req FraudScoreRequest, rules Rules) FraudScoreResponse 
 	}
 }
 
+type annSearchRequest struct {
+	Vector []float32 `json:"vector"`
+	K      int       `json:"k"`
+}
+
+type annSearchResult struct {
+	Label string `json:"label"`
+}
+
+type annSearchResponse struct {
+	Results []annSearchResult `json:"results"`
+}
+
 func queryANN(vector []float32) float32 {
 	annURL := os.Getenv("ANN_SERVICE_URL")
 	if annURL == "" {
 		annURL = "http://localhost:8090"
 	}
 
-	searchReq := struct {
-		Vector []float32 `json:"vector"`
-		K      int       `json:"k"`
-	}{
-		Vector: vector,
-		K:      5,
-	}
-
-	body, _ := json.Marshal(searchReq)
+	req := annSearchRequest{Vector: vector, K: 5}
+	body, _ := sonic.ConfigDefault.Marshal(req)
 	resp, err := http.Post(annURL+"/search", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("ANN service error: %v", err)
@@ -108,13 +116,8 @@ func queryANN(vector []float32) float32 {
 	}
 	defer resp.Body.Close()
 
-	var searchResp struct {
-		Results []struct {
-			Label string `json:"label"`
-		} `json:"results"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
+	var searchResp annSearchResponse
+	if err := sonic.ConfigDefault.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
 		log.Printf("Failed to decode ANN response: %v", err)
 		return 0.0
 	}
@@ -125,7 +128,7 @@ func queryANN(vector []float32) float32 {
 
 	fraudCount := 0
 	for _, r := range searchResp.Results {
-		if strings.ToLower(r.Label) == "fraud" {
+		if strings.EqualFold(r.Label, "fraud") {
 			fraudCount++
 		}
 	}
