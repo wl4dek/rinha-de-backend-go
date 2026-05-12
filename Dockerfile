@@ -6,8 +6,8 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server ./cmd/server
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ann-service ./cmd/ann-service
 # IF ivf_data is not included in the build context, you can build it in a separate stage and copy it to the final image
-# RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build-index ./cmd/build-index
-# RUN ./build-index --references /app/references.json.gz --output /app/ivf_data
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o build-index ./cmd/build-index
+RUN ./build-index --references /app/references.json.gz --output /app/ivf_data
 
 FROM alpine:latest
 RUN apk --no-cache add ca-certificates

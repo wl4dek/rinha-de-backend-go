@@ -15,5 +15,7 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
+ivf_data/
+
 # Go workspace file
 go.work
