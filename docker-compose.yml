@@ -6,7 +6,7 @@ services:
     environment:
       - ANN_PORT=8090
       - IVF_DATA_PATH=/root/ivf_data
-    cpus: '0.3'
+    cpus: '0.4'
     mem_limit: 160M
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8090/ready" ]
@@ -25,7 +25,7 @@ services:
     ports:
       - "8080:8080"
       - "6060:6060"
-    cpus: '0.25'
+    cpus: '0.2'
     mem_limit: 80M
     depends_on:
       ann-service:
@@ -47,7 +47,7 @@ services:
     ports:
       - "8081:8081"
       - "6061:6060"
-    cpus: '0.25'
+    cpus: '0.2'
     mem_limit: 80M
     depends_on:
       ann-service:
@@ -71,6 +71,7 @@ services:
       - "9999:9999"
     cpus: '0.2'
     mem_limit: 30M
+
   k6:
     image: grafana/k6
     environment:

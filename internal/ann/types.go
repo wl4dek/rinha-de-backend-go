@@ -1,5 +1,7 @@
 package ann
 
+const Dimensions = 14
+
 type Reference struct {
 	Vector []float32 `json:"vector"`
 	Label  string    `json:"label"`

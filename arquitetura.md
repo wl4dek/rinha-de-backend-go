@@ -8,6 +8,16 @@
      ↓                       ↓
      └───────────┬───────────┘
                  ↓
-        ANN SERVICE (HNSW)
+        ANN SERVICE
                  ↓
-            index.bin
+     ┌───────────────────────┐
+     │  HNSW (centroids)     │  ← 3 nearest clusters
+     └───────────┬───────────┘
+                 ↓
+     ┌───────────────────────┐
+     │  IVF scan (mmap)      │  ← MADV_SEQUENTIAL, dot product
+     └───────────┬───────────┘
+                 ↓
+     ┌───────────────────────┐
+     │  max-heap top-k       │  ← O(n log k)
+     └───────────────────────┘

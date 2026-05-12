@@ -11,9 +11,13 @@ Go 1.26.0, module `rinha-de-backend`. Single binary initially, now with ANN serv
 - `cmd/build-index/main.go` — offline tool to build IVF index from references
 - `internal/frauds_core/` — fraud scoring logic (14-dim vectors, rule-based + ANN)
 - `internal/ann/` — IVF index (clustering + HNSW on centroids + scan inside cluster)
-  - `ivf.go` — IVFIndex struct, Load/Search/Build
+  - `ivf.go` — IVFIndex struct, LoadIVF, Search (max-heap top-k, 3-cluster probe)
+  - `build.go` — BuildIVF, kmeansPP (k-means++ on normalized vectors)
+  - `math.go` — normalize, dotProduct (loop unrolled), nearestCentroid, addVec
+  - `heap.go` — maxHeap (container/heap) for top-k selection
+  - `mmap.go` — mmapFloat32 (MADV_SEQUENTIAL), readUint32File, readFloat32Vectors
   - `handler.go` — HTTP handlers (/search, /ready)
-  - `types.go` — request/response types
+  - `types.go` — request/response types, const Dimensions
 
 ## Build & Run
 
@@ -47,9 +51,11 @@ ANN: `go run ./cmd/ann-service`
 
 - IVF index with 500 clusters, using `github.com/coder/hnsw` for centroid indexing
 - Pre-built offline by `cmd/build-index` (k-means++ on 50K sample, then assigns all 3M)
+  - All vectors pre-normalized to unit length at build time
 - At runtime: loads centroids in HNSW + cluster assignments + labels (~23 MB RSS, ~11 MB heap)
 - Vectors stored cluster-ordered in vectors.bin (same cluster = contiguous on disk)
-- Vectors accessed via mmap + MADV_RANDOM (168 MB virtual, sequential cluster scan loads ~0.3 MB per search)
+- Vectors accessed via mmap + MADV_SEQUENTIAL (168 MB virtual, sequential cluster scan loads ~0.3 MB per search)
+- Search probes 3 nearest clusters, uses max-heap (O(n log k)) for top-k, dot product on normalized vectors
 - `POST /search` — KNN search with k=5 default
 - `GET /ready` — health check
 
@@ -69,3 +75,5 @@ ANN: `go run ./cmd/ann-service`
 - Binary files in `ivf_data/`: ivf.bin (header), vectors.bin (168 MB), centroids.bin (28 KB), labels.bin (3 MB), cluster_bounds.bin (2 KB)
 - build-index needs ~500 MB RAM temporarily (loads 3M refs + k-means), ann-service only ~23 MB
 - `github.com/TFMV/quiver` replaced with direct `github.com/coder/hnsw`
+- All vectors pre-normalized at build time so search uses simple dot product (no cosine similarity)
+- `github.com/chewxy/math32` removed — no longer needed
