@@ -1,0 +1,16 @@
+{
+    "participants": [
+        "Wladek Zacharski"
+    ],
+    "social": [
+        "https://github.com/wl4dek",
+        "https://www.linkedin.com/in/wladekz"
+    ],
+    "source-code-repo": "https://github.com/wl4dek/rinha-de-backend-go",
+    "stack": [
+        "go",
+        "nginx",
+        "ann-service"
+    ],
+    "open_to_work": true
+}
