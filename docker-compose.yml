@@ -71,18 +71,17 @@ services:
       - "9999:9999"
     cpus: '0.2'
     mem_limit: 30M
-
-  k6:
-    image: grafana/k6
-    environment:
-      K6_WEB_DASHBOARD: "true"
-    ports:
-      - "5665:5665"
-    volumes:
-      - ./k6:/scripts
-    command: run /scripts/test.js
-    depends_on:
-      - nginx
+  # k6:
+  #   image: grafana/k6
+  #   environment:
+  #     K6_WEB_DASHBOARD: "true"
+  #   ports:
+  #     - "5665:5665"
+  #   volumes:
+  #     - ./k6:/scripts
+  #   command: run /scripts/test.js
+  #   depends_on:
+  #     - nginx
 
 networks:
   default:
