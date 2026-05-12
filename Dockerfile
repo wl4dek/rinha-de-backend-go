@@ -14,6 +14,6 @@ RUN apk --no-cache add ca-certificates
 WORKDIR /root
 COPY --from=builder /app/server .
 COPY --from=builder /app/ann-service .
-COPY  ./ivf_data ./ivf_data
+COPY --from=builder /app/ivf_data ./ivf_data
 COPY references.json.gz ./
 EXPOSE 8080 8090
