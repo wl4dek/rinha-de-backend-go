@@ -9,6 +9,7 @@ Go 1.26.0, module `rinha-de-backend`. Single binary initially, now with ANN serv
 - `cmd/server/main.go` — API entrypoint, starts HTTP server on port 8080
 - `cmd/ann-service/main.go` — ANN service entrypoint, IVF index on port 8090
 - `cmd/build-index/main.go` — offline tool to build IVF index from references
+- `cmd/lb/main.go` — load balancer (round-robin) em Go, substitui nginx
 - `internal/frauds_core/` — fraud scoring logic (14-dim vectors, rule-based + ANN)
 - `internal/ann/` — IVF index (clustering + HNSW on centroids + scan inside cluster)
   - `ivf.go` — IVFIndex struct, LoadIVF, Search (max-heap top-k, 3-cluster probe)
@@ -25,6 +26,7 @@ Go 1.26.0, module `rinha-de-backend`. Single binary initially, now with ANN serv
 go build ./cmd/server
 go build ./cmd/ann-service
 go build ./cmd/build-index
+go build ./cmd/lb
 ```
 
 Build IVF index first:
@@ -64,7 +66,7 @@ ANN: `go run ./cmd/ann-service`
 `docker-compose.yml` defines 4 services within 1 CPU, 350MB total:
 - `ann-service` (0.3 CPU, 120MB)
 - `api01` + `api02` (0.25 CPU, 70MB each)
-- `nginx` (0.2 CPU, 70MB) — load balancer on port 9999
+- `lb` (0.15 CPU, 20MB) — load balancer (round-robin) em Go, porta 9999
 
 ## Notes
 
