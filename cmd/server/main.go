@@ -6,18 +6,21 @@ import (
 	_ "net/http/pprof"
 	"os"
 	"strconv"
+	"time"
 
 	fraudscore "rinha-de-backend/internal/frauds_core"
 	ready "rinha-de-backend/internal/ready"
 )
 
 type Config struct {
-	Port string
+	Port         string
+	PprofEnabled bool
 }
 
 func loadConfig() Config {
 	config := Config{
-		Port: getEnv("PORT", "8080"),
+		Port:         getEnv("PORT", "8080"),
+		PprofEnabled: os.Getenv("PPROF_ENABLED") == "true",
 	}
 	return config
 }
@@ -57,17 +60,36 @@ func main() {
 
 	log.Printf("Starting server on port %s", config.Port)
 
+	srv := &http.Server{
+		Addr:         ":" + config.Port,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
 	go func() {
-		err := http.ListenAndServe(":"+config.Port, mux)
-		if err != nil {
-			log.Fatalf("Erro ao iniciar servidor: %v", err)
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Printf("server error: %v", err)
 		}
 	}()
 
-	go func() {
-		log.Println("pprof on :6060")
-		log.Fatal(http.ListenAndServe("0.0.0.0:6060", nil))
-	}()
+	if config.PprofEnabled {
+		pprofSrv := &http.Server{
+			Addr:         "0.0.0.0:6060",
+			Handler:      http.DefaultServeMux,
+			ReadTimeout:  5 * time.Second,
+			WriteTimeout: 10 * time.Second,
+			IdleTimeout:  60 * time.Second,
+		}
+
+		go func() {
+			log.Println("pprof on :6060")
+			if err := pprofSrv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				log.Printf("pprof error: %v", err)
+			}
+		}()
+	}
 
 	select {}
 }

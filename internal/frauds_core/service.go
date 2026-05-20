@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/bytedance/sonic"
 )
@@ -101,6 +102,16 @@ type annSearchResponse struct {
 	Results []annSearchResult `json:"results"`
 }
 
+var annHTTPClient = &http.Client{
+	Timeout: 2 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		MaxIdleConnsPerHost: 100,
+		IdleConnTimeout:     90 * time.Second,
+		DisableCompression:  true,
+	},
+}
+
 func queryANN(vector []float32) float32 {
 	annURL := os.Getenv("ANN_SERVICE_URL")
 	if annURL == "" {
@@ -109,7 +120,7 @@ func queryANN(vector []float32) float32 {
 
 	req := annSearchRequest{Vector: vector, K: 5}
 	body, _ := sonic.ConfigDefault.Marshal(req)
-	resp, err := http.Post(annURL+"/search", "application/json", bytes.NewBuffer(body))
+	resp, err := annHTTPClient.Post(annURL+"/search", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("ANN service error: %v", err)
 		return 0.0

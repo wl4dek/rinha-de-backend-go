@@ -6,8 +6,10 @@ services:
     environment:
       - ANN_PORT=8090
       - IVF_DATA_PATH=/root/ivf_data
+      - GOMEMLIMIT=80MiB
+      - GOGC=200
     cpus: '0.4'
-    mem_limit: 170M
+    mem_limit: 80M
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8090/ready" ]
       interval: 30s
@@ -16,17 +18,19 @@ services:
       start_period: 60s
 
   api01: &api01
-    image: wl4dek/rinha-de-backend-go:latest
+    build: .
     command: [ "./server" ]
     platform: linux/amd64
     environment:
       - PORT=8080
       - ANN_SERVICE_URL=http://ann-service:8090
+      - GOMEMLIMIT=95MiB
+      - GOGC=200
     ports:
       - "8080:8080"
       - "6060:6060"
     cpus: '0.2'
-    mem_limit: 80M
+    mem_limit: 100M
     depends_on:
       ann-service:
         condition: service_healthy
@@ -42,6 +46,8 @@ services:
     environment:
       - PORT=8081
       - ANN_SERVICE_URL=http://ann-service:8090
+      - GOMEMLIMIT=95MiB
+      - GOGC=200
     ports:
       - "8081:8081"
       - "6061:6060"
@@ -52,38 +58,32 @@ services:
       retries: 30
       start_period: 30s
 
-  lb:
-    image: wl4dek/rinha-de-backend-go:latest
-    command: [ "./lb" ]
+  nginx:
+    image: nginx:alpine
     platform: linux/amd64
-    environment:
-      - LB_PORT=9999
-      - API01_URL=http://api01:8080
-      - API02_URL=http://api02:8081
-    ports:
-      - "9999:9999"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api01
       - api02
-    cpus: '0.15'
-    mem_limit: 20M
-    healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:9999/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
-  # k6:
-  #   image: grafana/k6
-  #   environment:
-  #     K6_WEB_DASHBOARD: "true"
-  #   ports:
-  #     - "5665:5665"
-  #   volumes:
-  #     - ./k6:/scripts
-  #   command: run /scripts/test.js
-  #   depends_on:
-  #     - lb
+    ports:
+      - "9999:9999"
+    cpus: '0.2'
+    mem_limit: 70M
+
+  k6:
+    image: grafana/k6
+    environment:
+      K6_WEB_DASHBOARD: "true"
+    ports:
+      - "5665:5665"
+    volumes:
+      - ./k6:/scripts
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    command: run /scripts/test.js
+    depends_on:
+      - nginx
 
 networks:
   default:

@@ -4,6 +4,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	ann "rinha-de-backend/internal/ann"
 )
@@ -32,7 +33,16 @@ func main() {
 	mux.HandleFunc("/ready", ann.HandleReady)
 
 	log.Printf("Starting ANN service on port %s", port)
-	if err := http.ListenAndServe(":"+port, mux); err != nil {
+
+	srv := &http.Server{
+		Addr:         ":" + port,
+		Handler:      mux,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		IdleTimeout:  60 * time.Second,
+	}
+
+	if err := srv.ListenAndServe(); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
