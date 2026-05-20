@@ -24,7 +24,7 @@ services:
     environment:
       - PORT=8080
       - ANN_SERVICE_URL=http://ann-service:8090
-      - GOMEMLIMIT=95MiB
+      - GOMEMLIMIT=100MiB
       - GOGC=200
     ports:
       - "8080:8080"
@@ -46,7 +46,7 @@ services:
     environment:
       - PORT=8081
       - ANN_SERVICE_URL=http://ann-service:8090
-      - GOMEMLIMIT=95MiB
+      - GOMEMLIMIT=100MiB
       - GOGC=200
     ports:
       - "8081:8081"
