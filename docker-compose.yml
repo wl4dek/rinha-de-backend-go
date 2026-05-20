@@ -6,8 +6,10 @@ services:
     environment:
       - ANN_PORT=8090
       - IVF_DATA_PATH=/root/ivf_data
+      - GOMEMLIMIT=80MiB
+      - GOGC=200
     cpus: '0.4'
-    mem_limit: 170M
+    mem_limit: 80M
     healthcheck:
       test: [ "CMD", "wget", "-q", "--spider", "http://localhost:8090/ready" ]
       interval: 30s
@@ -22,11 +24,13 @@ services:
     environment:
       - PORT=8080
       - ANN_SERVICE_URL=http://ann-service:8090
+      - GOMEMLIMIT=100MiB
+      - GOGC=200
     ports:
       - "8080:8080"
       - "6060:6060"
     cpus: '0.2'
-    mem_limit: 80M
+    mem_limit: 100M
     depends_on:
       ann-service:
         condition: service_healthy
@@ -42,6 +46,8 @@ services:
     environment:
       - PORT=8081
       - ANN_SERVICE_URL=http://ann-service:8090
+      - GOMEMLIMIT=100MiB
+      - GOGC=200
     ports:
       - "8081:8081"
       - "6061:6060"
@@ -52,27 +58,18 @@ services:
       retries: 30
       start_period: 30s
 
-  lb:
-    image: wl4dek/rinha-de-backend-go:latest
-    command: [ "./lb" ]
+  nginx:
+    image: nginx:alpine
     platform: linux/amd64
-    environment:
-      - LB_PORT=9999
-      - API01_URL=http://api01:8080
-      - API02_URL=http://api02:8081
-    ports:
-      - "9999:9999"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       - api01
       - api02
-    cpus: '0.15'
-    mem_limit: 20M
-    healthcheck:
-      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:9999/health" ]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 5s
+    ports:
+      - "9999:9999"
+    cpus: '0.2'
+    mem_limit: 70M
   # k6:
   #   image: grafana/k6
   #   environment:
@@ -81,9 +78,37 @@ services:
   #     - "5665:5665"
   #   volumes:
   #     - ./k6:/scripts
+  #     - /etc/localtime:/etc/localtime:ro
+  #     - /etc/timezone:/etc/timezone:ro
   #   command: run /scripts/test.js
   #   depends_on:
-  #     - lb
+  #     - nginx
+
+  # prometheus:
+  #   image: prom/prometheus:latest
+  #   platform: linux/amd64
+  #   command:
+  #     - "--config.file=/etc/prometheus/prometheus.yml"
+  #     - "--storage.tsdb.path=/prometheus"
+  #     - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+  #     - "--web.console.templates=/usr/share/prometheus/consoles"
+  #   volumes:
+  #     - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+  #   ports:
+  #     - "9090:9090"
+
+  # grafana:
+  #   image: grafana/grafana:latest
+  #   platform: linux/amd64
+  #   environment:
+  #     - GF_AUTH_ANONYMOUS_ENABLED=true
+  #     - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+  #   ports:
+  #     - "3000:3000"
+  #   volumes:
+  #     - ./grafana/provisioning:/etc/grafana/provisioning
+  #   depends_on:
+  #     - prometheus
 
 networks:
   default:
