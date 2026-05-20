@@ -7,6 +7,7 @@ import (
 	"time"
 
 	ann "rinha-de-backend/internal/ann"
+	"rinha-de-backend/internal/metrics"
 )
 
 func main() {
@@ -31,12 +32,14 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/search", ann.HandleSearch)
 	mux.HandleFunc("/ready", ann.HandleReady)
+	mux.Handle("/metrics", metrics.Handler())
+	handler := metrics.MetricsMiddleware(mux, "ann-service")
 
 	log.Printf("Starting ANN service on port %s", port)
 
 	srv := &http.Server{
 		Addr:         ":" + port,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,

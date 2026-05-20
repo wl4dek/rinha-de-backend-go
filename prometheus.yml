@@ -1,0 +1,16 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "api01"
+    static_configs:
+      - targets: ["api01:8080"]
+
+  - job_name: "api02"
+    static_configs:
+      - targets: ["api02:8081"]
+
+  - job_name: "ann-service"
+    static_configs:
+      - targets: ["ann-service:8090"]

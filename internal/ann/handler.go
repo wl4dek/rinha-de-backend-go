@@ -2,6 +2,9 @@ package ann
 
 import (
 	"net/http"
+	"time"
+
+	"rinha-de-backend/internal/metrics"
 
 	"github.com/bytedance/sonic"
 )
@@ -19,8 +22,14 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
+	start := time.Now()
+	defer func() {
+		metrics.AnnSearchDuration.Observe(time.Since(start).Seconds())
+	}()
+
 	var req SearchRequest
 	if err := sonic.ConfigDefault.NewDecoder(r.Body).Decode(&req); err != nil {
+		metrics.AnnSearchesTotal.WithLabelValues("error").Inc()
 		http.Error(w, "Invalid JSON", http.StatusBadRequest)
 		return
 	}
@@ -30,6 +39,7 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 
 	hits, err := index.Search(req.Vector, req.K)
 	if err != nil {
+		metrics.AnnSearchesTotal.WithLabelValues("error").Inc()
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -38,6 +48,8 @@ func HandleSearch(w http.ResponseWriter, r *http.Request) {
 	for i, hit := range hits {
 		out[i] = SearchResult{Label: hit.Label, Dist: hit.Dist}
 	}
+
+	metrics.AnnSearchesTotal.WithLabelValues("success").Inc()
 
 	resp := SearchResponse{Results: out}
 	w.Header().Set("Content-Type", "application/json")

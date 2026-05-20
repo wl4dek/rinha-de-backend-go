@@ -5,22 +5,25 @@ import (
 	"net/http"
 	_ "net/http/pprof"
 	"os"
+	fraudscore "rinha-de-backend/internal/frauds_core"
+	"rinha-de-backend/internal/metrics"
+	ready "rinha-de-backend/internal/ready"
+	"runtime"
 	"strconv"
 	"time"
-
-	fraudscore "rinha-de-backend/internal/frauds_core"
-	ready "rinha-de-backend/internal/ready"
 )
 
 type Config struct {
 	Port         string
 	PprofEnabled bool
+	IVFDataPath  string
 }
 
 func loadConfig() Config {
 	config := Config{
 		Port:         getEnv("PORT", "8080"),
 		PprofEnabled: os.Getenv("PPROF_ENABLED") == "true",
+		IVFDataPath:  getEnv("IVF_DATA_PATH", "./ivf_data"),
 	}
 	return config
 }
@@ -46,23 +49,25 @@ func setupRoutes() *http.ServeMux {
 
 	mux.HandleFunc("/ready", ready.HandleReady)
 	mux.HandleFunc("/fraud-score", fraudscore.HandleFraudScore)
-	mux.Handle("/debug/pprof/", http.DefaultServeMux)
+	mux.Handle("/metrics", metrics.Handler())
 
 	return mux
 }
 
 func main() {
+	runtime.GOMAXPROCS(1)
 	config := loadConfig()
 
 	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
 
 	mux := setupRoutes()
+	handler := metrics.MetricsMiddleware(mux, "server")
 
 	log.Printf("Starting server on port %s", config.Port)
 
 	srv := &http.Server{
 		Addr:         ":" + config.Port,
-		Handler:      mux,
+		Handler:      handler,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
 		IdleTimeout:  60 * time.Second,

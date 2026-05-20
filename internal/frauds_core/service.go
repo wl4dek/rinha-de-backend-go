@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"rinha-de-backend/internal/metrics"
+
 	"github.com/bytedance/sonic"
 )
 
@@ -78,7 +80,7 @@ func CalculateFraudScore(req FraudScoreRequest, rules Rules) FraudScoreResponse 
 
 	vector[13] = limitar(req.Merchant.AvgAmount, rules.MaxMerchantAvgAmount)
 
-	annScore := queryANN(vector[:])
+	annScore := annSearch(vector[:])
 	score = float64(annScore)
 
 	approved := score < 0.6
@@ -102,6 +104,16 @@ type annSearchResponse struct {
 	Results []annSearchResult `json:"results"`
 }
 
+var annSearch func([]float32) float32
+
+func init() {
+	annSearch = queryANNHTTP
+}
+
+func SetANNSearch(fn func([]float32) float32) {
+	annSearch = fn
+}
+
 var annHTTPClient = &http.Client{
 	Timeout: 2 * time.Second,
 	Transport: &http.Transport{
@@ -112,17 +124,23 @@ var annHTTPClient = &http.Client{
 	},
 }
 
-func queryANN(vector []float32) float32 {
+func queryANNHTTP(vector []float32) float32 {
 	annURL := os.Getenv("ANN_SERVICE_URL")
 	if annURL == "" {
 		annURL = "http://localhost:8090"
 	}
+
+	start := time.Now()
+	defer func() {
+		metrics.AnnClientDuration.Observe(time.Since(start).Seconds())
+	}()
 
 	req := annSearchRequest{Vector: vector, K: 5}
 	body, _ := sonic.ConfigDefault.Marshal(req)
 	resp, err := annHTTPClient.Post(annURL+"/search", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		log.Printf("ANN service error: %v", err)
+		metrics.AnnClientRequestsTotal.WithLabelValues("error").Inc()
 		return 0.0
 	}
 	defer resp.Body.Close()
@@ -130,10 +148,12 @@ func queryANN(vector []float32) float32 {
 	var searchResp annSearchResponse
 	if err := sonic.ConfigDefault.NewDecoder(resp.Body).Decode(&searchResp); err != nil {
 		log.Printf("Failed to decode ANN response: %v", err)
+		metrics.AnnClientRequestsTotal.WithLabelValues("error").Inc()
 		return 0.0
 	}
 
 	if len(searchResp.Results) == 0 {
+		metrics.AnnClientRequestsTotal.WithLabelValues("ok").Inc()
 		return 0.0
 	}
 
@@ -144,5 +164,6 @@ func queryANN(vector []float32) float32 {
 		}
 	}
 
+	metrics.AnnClientRequestsTotal.WithLabelValues("ok").Inc()
 	return float32(fraudCount) / float32(len(searchResp.Results))
 }
