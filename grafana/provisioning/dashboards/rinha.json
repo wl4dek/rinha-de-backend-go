@@ -148,6 +148,42 @@
           "custom": { "showPoints": "never" }
         }
       }
+    },
+    {
+      "title": "CPU Usage (cores)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
+      "targets": [
+        {
+          "expr": "rate(process_cpu_seconds_total{job=~\"api01|api02|ann-service\"}[1m])",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "custom": { "showPoints": "never" },
+          "min": 0
+        }
+      }
+    },
+    {
+      "title": "Memory (RSS)",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
+      "targets": [
+        {
+          "expr": "process_resident_memory_bytes{job=~\"api01|api02|ann-service\"}",
+          "legendFormat": "{{job}}"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "bytes",
+          "custom": { "showPoints": "never" },
+          "min": 0
+        }
+      }
     }
   ]
 }

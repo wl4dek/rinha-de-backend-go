@@ -10,9 +10,9 @@ const payloads = new SharedArray('payloads', function () {
 
 export const options = {
     stages: [
-        { duration: '30s', target: 50, tags: { stage: 'warmup' } },
-        { duration: '1m', target: 300, tags: { stage: 'load' } },
-        { duration: '2m', target: 800, tags: { stage: 'stress' } },
+        { duration: '30s', target: 200, tags: { stage: 'warmup' } },
+        { duration: '1m', target: 500, tags: { stage: 'load' } },
+        { duration: '2m', target: 1000, tags: { stage: 'stress' } },
         { duration: '30s', target: 0, tags: { stage: 'cooldown' } },
     ],
 
@@ -27,7 +27,7 @@ export default function () {
         payloads[Math.floor(Math.random() * payloads.length)];
 
     const res = http.post(
-        'http://nginx:9999/fraud-score',
+        'http://lb:9999/fraud-score',
         JSON.stringify(payload),
         {
             headers: {
