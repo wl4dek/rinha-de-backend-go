@@ -72,6 +72,12 @@ services:
       - "9999:9999"
     cpus: '0.2'
     mem_limit: 130M
+    healthcheck:
+      test: [ "CMD", "wget", "-q", "--spider", "http://localhost:9999/health" ]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
   # k6:
   #   image: grafana/k6
   #   environment:
